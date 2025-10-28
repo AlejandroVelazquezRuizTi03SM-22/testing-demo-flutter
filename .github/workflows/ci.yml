@@ -29,8 +29,10 @@ jobs:
         run: flutter pub get
       - name: Ejecutar análisis estático
         run: flutter analyze
-      - name: Ejecutar pruebas unitarias y de widget
-        run: flutter test --exclude-tags golden --exclude-tags integration
+      - name: Ejecutar pruebas unitarias y de widget (solo archivos no-golden)
+        run: |
+          flutter test test/widget_test.dart
+          flutter test test/calc_test.dart
 
   golden_tests:
     runs-on: ubuntu-latest
@@ -48,7 +50,7 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
       - name: Ejecutar Golden Tests
-        run: xvfb-run -a flutter test --tags golden
+        run: xvfb-run -a flutter test test/golden_test.dart --tags golden
 
   integration_tests:
     runs-on: macos-latest
