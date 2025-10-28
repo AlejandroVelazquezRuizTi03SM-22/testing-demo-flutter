@@ -38,7 +38,15 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+  
+  # Dependencia del SDK de Flutter
+  integration_test:
+    sdk: flutter
+    
+  # Dependencias de paquetes normales (solo versión)
+  golden_toolkit: ^0.15.0 # Usa la versión actual
+  mocktail: ^1.0.0 # Si lo estás usando
+  
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your

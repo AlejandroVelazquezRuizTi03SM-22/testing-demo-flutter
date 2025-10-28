@@ -1,0 +1,70 @@
+name: Flutter CI / Pruebas Automaticas
+
+# Define cuándo se ejecutará este flujo de trabajo
+on:
+  push:
+    branches:
+      - main
+      - feature/** # Se ejecuta en tu rama 'feature/testing-setup'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # Job 1: Análisis Estático y Pruebas Ligeras (Unitarias y Widget)
+  static_analysis_and_unit_tests:
+    runs-on: ubuntu-latest # Usa una máquina virtual Linux
+    steps:
+      - uses: actions/checkout@v4 # Obtiene el código
+      
+      - uses: subosito/flutter-action@v2 # Configura Flutter
+        with:
+          flutter-version: '3.19.x' # Usa una versión compatible
+          
+      - name: Instalar Dependencias
+        run: flutter pub get
+
+      - name: 1. Ejecutar Análisis Estático (Criterio: 15% - Lint en verde)
+        # Este paso fallará si hay violaciones en analysis_options.yaml
+        run: flutter analyze
+
+      - name: 2. Ejecutar Pruebas Unitarias y Widget (Criterio: 20% - Pasan)
+        # Solo ejecuta las pruebas rápidas para verificación temprana
+        run: flutter test --exclude-feature-regex 'golden|integration'
+
+  # Job 2: Pruebas Golden de Regresión Visual
+  golden_tests:
+    runs-on: ubuntu-latest
+    needs: [static_analysis_and_unit_tests] # Solo se ejecuta si el Job 1 pasa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          
+      - name: Instalar Dependencias
+        run: flutter pub get
+
+      - name: 3. Ejecutar Golden Tests (Criterio: 15% - Funcional)
+        # Golden tests requieren una pantalla headless.
+        # Aquí NO usamos '--update-goldens', solo 'flutter test' para comparar con los archivos .png que subiste.
+        run: flutter test --tags golden
+        
+  # Job 3: Pruebas de Integración (E2E)
+  integration_tests:
+    runs-on: macos-latest # Usar macOS o una máquina con Android SDK para E2E
+    needs: [static_analysis_and_unit_tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+
+      - name: Instalar Dependencias
+        run: flutter pub get
+
+      - name: 4. Ejecutar Pruebas de Integración (Criterio: 20% - Flujo básico)
+        # Ejecuta la prueba de integración en un emulador Android (requiere un runner pesado como macos-latest)
+        run: |
+          sudo apt-get update && sudo apt-get install -y ruby ruby-dev
+          flutter test integration_test/
