@@ -35,7 +35,6 @@ jobs:
       - name: Ejecutar análisis estático
         run: flutter analyze
 
-      # Ejecuta solo tests NO golden para evitar que se cargue el archivo golden
       - name: Ejecutar pruebas unitarias y de widget (no golden)
         run: |
           flutter test test/widget_test.dart
@@ -60,11 +59,9 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
-      # Genera/actualiza baselines para no fallar mientras estabilizas las imágenes
       - name: Ejecutar Golden Tests (actualiza baselines)
         run: xvfb-run -a flutter test test/golden_test.dart --tags golden --update-goldens
 
-      # Sube imágenes generadas (baselines / failures) para revisión
       - name: Subir goldens como artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -87,13 +84,16 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
-      - name: Preparar CLI
+      - name: Preparar CLI (habilitar Web)
         run: |
           flutter --version
           flutter config --no-analytics --no-cli-animations
+          flutter config --enable-web
+          flutter doctor -v
+          flutter devices
 
       - name: Instalar dependencias
         run: flutter pub get
 
-      - name: Ejecutar pruebas de integración
-        run: flutter test integration_test/
+      - name: Ejecutar pruebas de integración en Chrome
+        run: flutter test -d chrome integration_test/
