@@ -84,16 +84,54 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
-      - name: Preparar CLI (habilitar Web)
+      - name: Preparar CLI (iOS)
         run: |
           flutter --version
           flutter config --no-analytics --no-cli-animations
-          flutter config --enable-web
           flutter doctor -v
-          flutter devices
+          xcodebuild -version
+          xcrun simctl list
+
+      - name: Bootear simulador iOS (iPhone 15)
+        env:
+          IOS_DEVICE: "iPhone 15"
+        run: |
+          UDID=$(xcrun simctl list devices | awk -F '[()]' '/iPhone 15 \(.*Shutdown\)/{print $2; exit}')
+          if [ -z "$UDID" ]; then
+            echo "No se encontró un iPhone 15 apagado; buscando cualquiera disponible…"
+            UDID=$(xcrun simctl list devices | awk -F '[()]' '/iPhone .* \(.*Shutdown\)/{print $2; exit}')
+          fi
+          if [ -z "$UDID" ]; then
+            echo "No hay simuladores disponibles. Fallando."
+            exit 1
+          fi
+          echo "Usando UDID: $UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          open -a Simulator || true
+          xcrun simctl list | sed -n "/$UDID/,\$p" | head -n 20
 
       - name: Instalar dependencias
         run: flutter pub get
 
-      - name: Ejecutar pruebas de integración en Chrome
-        run: flutter test -d chrome integration_test/
+      - name: Build iOS para simulador
+        run: |
+          # Asegura que exista carpeta ios y CocoaPods resuelto
+          if [ -d "ios" ]; then
+            cd ios
+            pod install --repo-update
+            cd ..
+          fi
+          flutter build ios --simulator --no-codesign
+
+      - name: Ejecutar pruebas de integración en iOS Simulator
+        run: |
+          # Seleccionar el primer simulador booted
+          DEVICE_ID=$(xcrun simctl list devices | awk -F '[()]' '/Booted/{print $2; exit}')
+          if [ -z "$DEVICE_ID" ]; then
+            echo "No hay simulador booted."
+            exit 1
+          fi
+          flutter devices
+          echo "Usando simulador: $DEVICE_ID"
+          flutter test -d "$DEVICE_ID" integration_test/
